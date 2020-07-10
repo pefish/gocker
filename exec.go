@@ -40,11 +40,11 @@ func execInContainer(containerId string) {
 		log.Fatalf("Unable to open namespace files!")
 	}
 
-	unix.Setns(int(ipcFd.Fd()), syscall.CLONE_NEWIPC)
-	unix.Setns(int(mntFd.Fd()), syscall.CLONE_NEWNS)
-	unix.Setns(int(netFd.Fd()), syscall.CLONE_NEWNET)
-	unix.Setns(int(pidFd.Fd()), syscall.CLONE_NEWPID)
-	unix.Setns(int(utsFd.Fd()), syscall.CLONE_NEWUTS)
+	unix.Setns(int(ipcFd.Fd()), syscall.CLONE_NEWIPC)  // 激活IPC命名空间
+	unix.Setns(int(mntFd.Fd()), syscall.CLONE_NEWNS)  // 激活FS命名空间
+	unix.Setns(int(netFd.Fd()), syscall.CLONE_NEWNET)  // 激活网络命名空间
+	unix.Setns(int(pidFd.Fd()), syscall.CLONE_NEWPID)  // 激活pid命名空间
+	unix.Setns(int(utsFd.Fd()), syscall.CLONE_NEWUTS)  // 激活uts命名空间
 
 	containerConfig, err := getRunningContainerInfoForId(containerId)
 	if err != nil {

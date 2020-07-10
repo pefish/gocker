@@ -108,7 +108,7 @@ func setupContainerNetworkInterfaceStep2(containerID string) {
 	if err != nil {
 		log.Fatalf("Unable to open: %v\n", err)
 	}
-	if err := unix.Setns(fd, syscall.CLONE_NEWNET); err != nil {
+	if err := unix.Setns(fd, syscall.CLONE_NEWNET); err != nil {  // 激活网络命名空间
 		log.Fatalf("Setns system call failed: %v\n", err)
 	}
 
@@ -188,7 +188,7 @@ func joinContainerNetworkNamespace(containerID string) error {
 		log.Printf("Unable to open: %v\n", err)
 		return err
 	}
-	if err := unix.Setns(fd, syscall.CLONE_NEWNET); err != nil {
+	if err := unix.Setns(fd, syscall.CLONE_NEWNET); err != nil {  // 激活网络命名空间
 		log.Printf("Setns system call failed: %v\n", err)
 		return err
 	}
