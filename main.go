@@ -56,13 +56,13 @@ func main() {
 			log.Fatalf("Please pass image name and command to run")
 		}
 		/* Create and setup the gocker0 network bridge we need */
-		if isUp, _ := isGockerBridgeUp(); !isUp {
+		if isUp, _ := isGockerBridgeUp(); !isUp {  // bridge虚拟设备没有安装的话，就安装
 			log.Println("Bringing up the gocker0 bridge...")
 			if err := setupGockerBridge(); err != nil {
 				log.Fatalf("Unable to create gocker0 bridge: %v", err)
 			}
 		}
-		initContainer(*mem, *swap, *pids, *cpus, fs.Args()[0], fs.Args()[1:])
+		initContainer(*mem, *swap, *pids, *cpus, fs.Args()[0], fs.Args()[1:])  // 下载镜像 -> 安装并激活各种命名空间 -> 配置网卡 -> 设置cgroups -> 执行命令 -> 卸载命名空间、网卡 -> 删除cgroups -> 清理容器资源
 	case "child-mode":
 		fs := flag.FlagSet{}
 		fs.ParseErrorsWhitelist.UnknownFlags = true
@@ -78,12 +78,12 @@ func main() {
 		if len(fs.Args()) < 2 {
 			log.Fatalf("Please pass image name and command to run")
 		}
-		execContainerCommand(*mem, *swap, *pids, *cpus, fs.Args()[0], *image, fs.Args()[1:])
+		execContainerCommand(*mem, *swap, *pids, *cpus, fs.Args()[0], *image, fs.Args()[1:])  // 设置容器环境(设置cgroup等等)，然后执行命令
 	case "setup-netns":
-		setupNewNetworkNamespace(os.Args[2])
+		setupNewNetworkNamespace(os.Args[2])  // 安装并激活容器用的网络命名空间
 	case "setup-veth":
-		setupContainerNetworkInterfaceStep1(os.Args[2])
-		setupContainerNetworkInterfaceStep2(os.Args[2])
+		setupContainerNetworkInterfaceStep1(os.Args[2])  // 安装vth1网卡到容器网络命名空间
+		setupContainerNetworkInterfaceStep2(os.Args[2])  // 配置vth1网卡
 	case "ps":
 		printRunningContainers()
 	case "exec":

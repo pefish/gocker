@@ -98,24 +98,24 @@ func execContainerCommand(mem int, swap int, pids int, cpus float64,
 	cmd.Stderr = os.Stderr
 
 	imgConfig := parseContainerConfig(imageShaHex)
-	doOrDieWithMsg(syscall.Sethostname([]byte(containerID)), "Unable to set hostname")
-	doOrDieWithMsg(joinContainerNetworkNamespace(containerID), "Unable to join container network namespace")
-	createCGroups(containerID, true)
-	configureCGroups(containerID, mem, swap, pids, cpus)
-	doOrDieWithMsg(copyNameserverConfig(containerID), "Unable to copy resolve.conf")
-	doOrDieWithMsg(syscall.Chroot(mntPath), "Unable to chroot")
-	doOrDieWithMsg(os.Chdir("/"), "Unable to change directory")
-	createDirsIfDontExist([]string{"/proc", "/sys"})
-	doOrDieWithMsg(syscall.Mount("proc", "/proc", "proc", 0, ""), "Unable to mount proc")
-	doOrDieWithMsg(syscall.Mount("tmpfs", "/tmp", "tmpfs", 0, ""), "Unable to mount tmpfs")
-	doOrDieWithMsg(syscall.Mount("tmpfs", "/dev", "tmpfs", 0, ""), "Unable to mount tmpfs on /dev")
-	createDirsIfDontExist([]string{"/dev/pts"})
-	doOrDieWithMsg(syscall.Mount("devpts", "/dev/pts", "devpts", 0, ""), "Unable to mount devpts")
-	doOrDieWithMsg(syscall.Mount("sysfs", "/sys", "sysfs", 0, ""), "Unable to mount sysfs")
-	setupLocalInterface()
+	doOrDieWithMsg(syscall.Sethostname([]byte(containerID)), "Unable to set hostname")  // 设置容器的hostname（命名空间的关系，只会作用于容器）
+	doOrDieWithMsg(joinContainerNetworkNamespace(containerID), "Unable to join container network namespace")  // 激活网络命名空间
+	createCGroups(containerID, true)  // 创建cpu、mem等各种cgroup
+	configureCGroups(containerID, mem, swap, pids, cpus)  // 根据设置的最大用量配置cgroup
+	doOrDieWithMsg(copyNameserverConfig(containerID), "Unable to copy resolve.conf")  // 将主机中dns的配置复制到容器
+	doOrDieWithMsg(syscall.Chroot(mntPath), "Unable to chroot")  // 设置容器的文件系统根目录
+	doOrDieWithMsg(os.Chdir("/"), "Unable to change directory")  // 进入根目录
+	createDirsIfDontExist([]string{"/proc", "/sys"})  // 容器中如果不存在/proc和/sys目录，则创建他们
+	doOrDieWithMsg(syscall.Mount("proc", "/proc", "proc", 0, ""), "Unable to mount proc")  // 挂载目录/proc。-v的作用
+	doOrDieWithMsg(syscall.Mount("tmpfs", "/tmp", "tmpfs", 0, ""), "Unable to mount tmpfs")  // 挂载目录/tmp
+	doOrDieWithMsg(syscall.Mount("tmpfs", "/dev", "tmpfs", 0, ""), "Unable to mount tmpfs on /dev") // 挂载目录/dev
+	createDirsIfDontExist([]string{"/dev/pts"})  // /dev/pts目录不存在的话就创建
+	doOrDieWithMsg(syscall.Mount("devpts", "/dev/pts", "devpts", 0, ""), "Unable to mount devpts")  // 挂载目录/dev/pts
+	doOrDieWithMsg(syscall.Mount("sysfs", "/sys", "sysfs", 0, ""), "Unable to mount sysfs")  // 挂载目录/sys
+	setupLocalInterface()  // 设置容器网络命名空间的lo回环网卡
 	cmd.Env = imgConfig.Config.Env
-	cmd.Run()
-	doOrDie(syscall.Unmount("/dev/pts", 0))
+	cmd.Run()  // 执行命令
+	doOrDie(syscall.Unmount("/dev/pts", 0))  // 命令执行完后卸载所有共享目录
 	doOrDie(syscall.Unmount("/dev", 0))
 	doOrDie(syscall.Unmount("/sys", 0))
 	doOrDie(syscall.Unmount("/proc", 0))
@@ -128,7 +128,7 @@ func prepareAndExecuteContainer(mem int, swap int, pids int, cpus float64,
 	/* Setup the network namespace  */
 	cmd := &exec.Cmd{
 		Path:   "/proc/self/exe",
-		Args:   []string{"/proc/self/exe", "setup-netns", containerID},
+		Args:   []string{"/proc/self/exe", "setup-netns", containerID},  // linux中/proc/self/exe指代当前程序，也就是gocker
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}
@@ -190,19 +190,19 @@ func prepareAndExecuteContainer(mem int, swap int, pids int, cpus float64,
 }
 
 func initContainer(mem int, swap int, pids int, cpus float64, src string, args []string) {
-	containerID := createContainerID()
+	containerID := createContainerID()  // 随机生成一个容器id
 	log.Printf("New container ID: %s\n", containerID)
-	imageShaHex := downloadImageIfRequired(src)
+	imageShaHex := downloadImageIfRequired(src)  // 获取镜像hash
 	log.Printf("Image to overlay mount: %s\n", imageShaHex)
-	createContainerDirectories(containerID)
-	mountOverlayFileSystem(containerID, imageShaHex)
-	if err := setupVirtualEthOnHost(containerID); err != nil {
+	createContainerDirectories(containerID)  // 创建容器相关的目录
+	mountOverlayFileSystem(containerID, imageShaHex)  // 挂载文件系统，安装FS命名空间
+	if err := setupVirtualEthOnHost(containerID); err != nil {  // 主机中安装vth0的虚拟网卡，并挂载到bridge交换机设备
 		log.Fatalf("Unable to setup Veth0 on host: %v", err)
 	}
-	prepareAndExecuteContainer(mem, swap, pids, cpus, containerID, imageShaHex, args)
+	prepareAndExecuteContainer(mem, swap, pids, cpus, containerID, imageShaHex, args)  // 配置命名空间->配置容器内网卡->执行命令
 	log.Printf("Container done.\n")
-	unmountNetworkNamespace(containerID)
-	unmountContainerFs(containerID)
-	removeCGroups(containerID)
-	os.RemoveAll(getGockerContainersPath() + "/" + containerID)
+	unmountNetworkNamespace(containerID)  // 卸载网络命名空间
+	unmountContainerFs(containerID)  // 卸载FS命名空间
+	removeCGroups(containerID)  // 移除cgroups
+	os.RemoveAll(getGockerContainersPath() + "/" + containerID)  // 清理掉容器目录
 }

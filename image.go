@@ -77,7 +77,7 @@ func getImageAndTagForHash(imageShaHash string) (string, string) {
 	return "", ""
 }
 
-func imageExistsByHash(imageShaHex string) (string, string) {
+func imageExistsByHash(imageShaHex string) (string, string) {  // 从本地查找是否有这个hash的镜像
 	idb := imagesDB{}
 	parseImagesMetadata(&idb)
 	for imgName, avlImages := range idb {
@@ -105,7 +105,7 @@ func imageExistByTag(imgName string, tagName string) (bool, string) {
 	return false, ""
 }
 
-func downloadImage(img v1.Image, imageShaHex string, src string) {
+func downloadImage(img v1.Image, imageShaHex string, src string) {  // 下载镜像
 	path := getGockerTempPath() + "/" + imageShaHex
 	os.Mkdir(path, 0755)
 	path +="/package.tar"
@@ -116,7 +116,7 @@ func downloadImage(img v1.Image, imageShaHex string, src string) {
 	log.Printf("Successfully downloaded %s\n", src)
 }
 
-func untarFile(imageShaHex string) {
+func untarFile(imageShaHex string) {  // 解压tar文件
 	pathDir := getGockerTempPath() + "/" + imageShaHex
 	pathTar := pathDir + "/package.tar"
 	if err := untar(pathTar, pathDir); err != nil {
@@ -279,7 +279,7 @@ func getImageNameAndTag(src string) (string, string) {
 
 func downloadImageIfRequired(src string) string {
 	imgName, tagName := getImageNameAndTag(src)
-	if downloadRequired, imageShaHex := imageExistByTag(imgName, tagName); !downloadRequired {
+	if downloadRequired, imageShaHex := imageExistByTag(imgName, tagName); !downloadRequired { // 如果本地不存在镜像，则从dockerhub拉取镜像
 		/* Setup the image we want to pull */
 		log.Printf("Downloading metadata for %s:%s, please wait...", imgName, tagName)
 		img, err := crane.Pull(strings.Join([]string{imgName, tagName}, ":"))
@@ -292,19 +292,19 @@ func downloadImageIfRequired(src string) string {
 		log.Printf("imageHash: %v\n", imageShaHex)
 		log.Println("Checking if image exists under another name...")
 		/* Identify cases where ubuntu:latest could be the same as ubuntu:20.04*/
-		altImgName, altImgTag := imageExistsByHash(imageShaHex)
+		altImgName, altImgTag := imageExistsByHash(imageShaHex)  // 再次根据hash查找本地是否已经存在镜像
 		if len(altImgName) > 0 && len(altImgTag) > 0 {
 			log.Printf("The image you requested %s:%s is the same as %s:%s\n",
 				imgName, tagName, altImgName, altImgTag)
-			storeImageMetadata(imgName, tagName, imageShaHex)
+			storeImageMetadata(imgName, tagName, imageShaHex)  // 存在的话，更新关联关系
 			return imageShaHex
-		} else {
+		} else {  // 不存在，开始下载镜像
 			log.Println("Image doesn't exist. Downloading...")
-			downloadImage(img, imageShaHex, src)
-			untarFile(imageShaHex)
+			downloadImage(img, imageShaHex, src)  // 下载tar文件镜像
+			untarFile(imageShaHex)  // 解压tar文件
 			processLayerTarballs(imageShaHex, manifest.Config.Digest.Hex)
-			storeImageMetadata(imgName, tagName, imageShaHex)
-			deleteTempImageFiles(imageShaHex)
+			storeImageMetadata(imgName, tagName, imageShaHex)  // 保存信息
+			deleteTempImageFiles(imageShaHex)  // 删除临时目录
 			return imageShaHex
 		}
 	} else {

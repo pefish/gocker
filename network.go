@@ -28,7 +28,7 @@ func createIPAddress() string {
 	Go through the list of interfaces and return true if the gocker0 bridge is up
 */
 
-func isGockerBridgeUp() (bool, error) {
+func isGockerBridgeUp() (bool, error) {  // 查看是否已创建bridge虚拟设备
 	if links, err := netlink.LinkList(); err != nil {
 		log.Printf("Unable to get list of links.\n")
 		return false, err
@@ -49,7 +49,7 @@ func isGockerBridgeUp() (bool, error) {
 	IPs which we will also use for our containers.
 */
 
-func setupGockerBridge() error {
+func setupGockerBridge() error {  // 安装bridge虚拟设备
 	linkAttrs := netlink.NewLinkAttrs()
 	linkAttrs.Name = "gocker0"
 	gockerBridge := &netlink.Bridge{LinkAttrs: linkAttrs}
@@ -57,8 +57,8 @@ func setupGockerBridge() error {
 		return err
 	}
 	addr, _ := netlink.ParseAddr("172.29.0.1/16")
-	netlink.AddrAdd(gockerBridge, addr)
-	netlink.LinkSetUp(gockerBridge)
+	netlink.AddrAdd(gockerBridge, addr)  // 设置ip地址为172.29.0.1，掩码为255.255.0.0
+	netlink.LinkSetUp(gockerBridge)  // 安装虚拟设备
 	return nil
 }
 
@@ -96,7 +96,7 @@ func setupContainerNetworkInterfaceStep1(containerID string) {
 	if err != nil {
 		log.Fatalf("Unable to fetch veth1: %v\n", err)
 	}
-	if err := netlink.LinkSetNsFd(veth1Link, fd); err != nil {
+	if err := netlink.LinkSetNsFd(veth1Link, fd); err != nil {  // veth1虚拟网卡安装到容器的网络命名空间中
 		log.Fatalf("Unable to set network namespace for veth1: %v\n", err)
 	}
 }
@@ -118,12 +118,12 @@ func setupContainerNetworkInterfaceStep2(containerID string) {
 		log.Fatalf("Unable to fetch veth1: %v\n", err)
 	}
 	addr, _ := netlink.ParseAddr(createIPAddress() + "/16")
-	if err := netlink.AddrAdd(veth1Link, addr); err != nil {
+	if err := netlink.AddrAdd(veth1Link, addr); err != nil {  // 给veth1网卡设置一个ip
 		log.Fatalf("Error assigning IP to veth1: %v\n", err)
 	}
 
 	/* Bring up the interface */
-	doOrDieWithMsg(netlink.LinkSetUp(veth1Link), "Unable to bring up veth1")
+	doOrDieWithMsg(netlink.LinkSetUp(veth1Link), "Unable to bring up veth1")  // 使配置生效
 
 	/* Add a default route */
 	route := netlink.Route{
@@ -132,7 +132,7 @@ func setupContainerNetworkInterfaceStep2(containerID string) {
 		Gw:        net.ParseIP("172.29.0.1"),
 		Dst:       nil,
 	}
-	doOrDieWithMsg(netlink.RouteAdd(&route), "Unable to add default route")
+	doOrDieWithMsg(netlink.RouteAdd(&route), "Unable to add default route")  // 给vth1网卡添加路由，网关设置为bridge网卡的ip
 }
 
 /*
@@ -157,7 +157,7 @@ func setupLocalInterface() {
 	}
 }
 
-func setupNewNetworkNamespace(containerID string) {
+func setupNewNetworkNamespace(containerID string) {  // 设置容器的网络命名空间
 	_ = createDirsIfDontExist([]string{getGockerNetNsPath()})
 	nsMount := getGockerNetNsPath() + "/" + containerID
 	if _, err := syscall.Open(nsMount, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_EXCL, 0644); err != nil {
@@ -173,10 +173,10 @@ func setupNewNetworkNamespace(containerID string) {
 	if err := syscall.Unshare(syscall.CLONE_NEWNET); err != nil {
 		log.Fatalf("Unshare system call failed: %v\n", err)
 	}
-	if err := syscall.Mount("/proc/self/ns/net", nsMount, "bind", syscall.MS_BIND, ""); err != nil {
+	if err := syscall.Mount("/proc/self/ns/net", nsMount, "bind", syscall.MS_BIND, ""); err != nil {  // 新建一个网络命名空间
 		log.Fatalf("Mount system call failed: %v\n", err)
 	}
-	if err := unix.Setns(fd, syscall.CLONE_NEWNET); err != nil {
+	if err := unix.Setns(fd, syscall.CLONE_NEWNET); err != nil {  // 激活网络命名空间
 		log.Fatalf("Setns system call failed: %v\n", err)
 	}
 }
