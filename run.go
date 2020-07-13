@@ -180,7 +180,7 @@ func prepareAndExecuteContainer(mem int, swap int, pids int, cpus float64,
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{
+	cmd.SysProcAttr = &syscall.SysProcAttr{  // 创建新的PID命名空间、NS命名空间、UTS命名空间、IPC命名空间
 		Cloneflags: syscall.CLONE_NEWPID |
 			syscall.CLONE_NEWNS |
 			syscall.CLONE_NEWUTS |

@@ -63,7 +63,7 @@ func main() {
 			}
 		}
 		initContainer(*mem, *swap, *pids, *cpus, fs.Args()[0], fs.Args()[1:])  // 下载镜像 -> 安装并激活各种命名空间 -> 配置网卡 -> 设置cgroups -> 执行命令 -> 卸载命名空间、网卡 -> 删除cgroups -> 清理容器资源
-	case "child-mode":
+	case "child-mode":  // 这里是真正的执行容器内命令
 		fs := flag.FlagSet{}
 		fs.ParseErrorsWhitelist.UnknownFlags = true
 
@@ -87,7 +87,7 @@ func main() {
 	case "ps":
 		printRunningContainers()
 	case "exec":
-		execInContainer(os.Args[2])
+		execInContainer(os.Args[2])  // 激活这个进程的各种命名空间，然后运行命令
 	case "images":
 		printAvailableImages()
 	case "rmi":

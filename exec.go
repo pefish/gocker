@@ -40,7 +40,7 @@ func execInContainer(containerId string) {
 		log.Fatalf("Unable to open namespace files!")
 	}
 
-	unix.Setns(int(ipcFd.Fd()), syscall.CLONE_NEWIPC)  // 激活IPC命名空间
+	unix.Setns(int(ipcFd.Fd()), syscall.CLONE_NEWIPC)  // 激活这个容器pid的IPC命名空间
 	unix.Setns(int(mntFd.Fd()), syscall.CLONE_NEWNS)  // 激活FS命名空间
 	unix.Setns(int(netFd.Fd()), syscall.CLONE_NEWNET)  // 激活网络命名空间
 	unix.Setns(int(pidFd.Fd()), syscall.CLONE_NEWPID)  // 激活pid命名空间
@@ -57,7 +57,7 @@ func execInContainer(containerId string) {
 	}
 	imgConfig := parseContainerConfig(imageShaHex)
 	containerMntPath := getGockerContainersPath() + "/" + containerId + "/fs/mnt"
-	createCGroups(containerId, false)
+	createCGroups(containerId, false)  // 创建cgroups资源
 	doOrDieWithMsg(syscall.Chroot(containerMntPath), "Unable to chroot")
 	os.Chdir("/")
 	cmd := exec.Command(os.Args[3], os.Args[4:]...)
