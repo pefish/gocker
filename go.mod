@@ -1,4 +1,4 @@
-module github.com/shuveb/containers-the-hard-way
+module github.com/pefish/gocker
 
 go 1.14
 
